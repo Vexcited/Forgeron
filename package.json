@@ -1,6 +1,7 @@
 {
   "name": "forgeron",
   "version": "2.0.0",
+  "sideEffects": false,
   "description": "JavaScript implementations of network transports, cryptography, ciphers, PKI, message digests, and various utilities.",
   "homepage": "https://github.com/Vexcited/Forgeron",
   "author": "Mikkel RINGAUD <mikkel@milescode.dev> (https://github.com/Vexcited)",
