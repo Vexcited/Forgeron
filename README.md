@@ -1,6 +1,27 @@
 # Forgeron
 
+A rewrite of the `node-forge` library in TypeScript with a focus on ESM compatibility with tree-shaking support.
+
 ## Roadmap
+
+## `asn1.js`
+
+- [x] `forge.asn1.create`
+- [x] `forge.asn1.copy`
+- [x] `forge.asn1.equals` (some typing issues)
+- [x] `forge.asn1.getBerValueLength`
+- [x] `forge.asn1.fromDer`
+- [x] `forge.asn1.toDer`
+- [ ] `forge.asn1.oidToDer`
+- [ ] `forge.asn1.derToOid`
+- [ ] `forge.asn1.utcTimeToDate`
+- [ ] `forge.asn1.generalizedTimeToDate`
+- [ ] `forge.asn1.dateToUtcTime`
+- [ ] `forge.asn1.dateToGeneralizedTime`
+- [ ] `forge.asn1.integerToDer`
+- [ ] `forge.asn1.derToInteger`
+- [ ] `forge.asn1.validate`
+- [ ] `forge.asn1.prettyPrint`
 
 ### `util.js`
 
