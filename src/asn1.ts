@@ -172,7 +172,7 @@ export enum Type {
   BMPSTRING = 30
 };
 
-interface Asn1 {
+export interface Asn1 {
   tagClass: Class;
   type: Type;
   constructed: boolean;
@@ -487,7 +487,7 @@ export function fromDer (bytes: string | ByteStringBuffer, options?: boolean | {
    * @default true
    */
   decodeBitStrings?: boolean;
-}) {
+}): Asn1 {
   if (options === undefined) {
     options = {
       strict: true,
@@ -548,7 +548,7 @@ function _fromDer (bytes: ByteStringBuffer, remaining: number, depth: number, op
   strict?: boolean;
   parseAllBytes?: boolean;
   decodeBitStrings?: boolean;
-}) {
+}): Asn1 {
   // temporary storage for consumption calculations
   var start: number;
 
@@ -726,7 +726,7 @@ function _fromDer (bytes: ByteStringBuffer, remaining: number, depth: number, op
  * @return the buffer of bytes.
  * @was forge.asn1.toDer
  */
-export function toDer (obj) {
+export function toDer (obj: Asn1): ByteStringBuffer {
   var bytes = createBuffer();
 
   // build the first byte
@@ -744,8 +744,8 @@ export function toDer (obj) {
     }
   }
 
-  if(useBitStringContents) {
-    value.putBytes(obj.bitStringContents);
+  if (useBitStringContents) {
+    value.putBytes(obj.bitStringContents!);
   } else if(obj.composed) {
     // if composed, use each child asn1 object's DER bytes as value
     // turn on 6th bit (0x20 = 32) to indicate asn1 is constructed
@@ -760,30 +760,32 @@ export function toDer (obj) {
     // add all of the child DER bytes together
     for(var i = 0; i < obj.value.length; ++i) {
       if(obj.value[i] !== undefined) {
-        value.putBuffer(toDer(obj.value[i]));
+        value.putBuffer(toDer(obj.value[i] as Asn1));
       }
     }
   } else {
     // use asn1.value directly
     if(obj.type === Type.BMPSTRING) {
       for(var i = 0; i < obj.value.length; ++i) {
-        value.putInt16(obj.value.charCodeAt(i));
+        value.putInt16((obj.value as string).charCodeAt(i));
       }
     } else {
+      const v = obj.value as string;
+
       // ensure integer is minimally-encoded
       // TODO: should all leading bytes be stripped vs just one?
       // .. ex '00 00 01' => '01'?
       if(obj.type === Type.INTEGER &&
-        obj.value.length > 1 &&
+        v.length > 1 &&
         // leading 0x00 for positive integer
-        ((obj.value.charCodeAt(0) === 0 &&
-        (obj.value.charCodeAt(1) & 0x80) === 0) ||
+        ((v.charCodeAt(0) === 0 &&
+        (v.charCodeAt(1) & 0x80) === 0) ||
         // leading 0xFF for negative integer
-        (obj.value.charCodeAt(0) === 0xFF &&
-        (obj.value.charCodeAt(1) & 0x80) === 0x80))) {
-        value.putBytes(obj.value.substr(1));
+        (v.charCodeAt(0) === 0xFF &&
+        (v.charCodeAt(1) & 0x80) === 0x80))) {
+        value.putBytes(v.substr(1));
       } else {
-        value.putBytes(obj.value);
+        value.putBytes(v);
       }
     }
   }
@@ -830,8 +832,146 @@ export function toDer (obj) {
 // TODO: asn1.generalizedTimeToDate
 // TODO: asn1.dateToUtcTime
 // TODO: asn1.dateToGeneralizedTime
-// TODO: asn1.integerToDer
+
+/**
+ * Converts a javascript integer to a DER-encoded byte buffer to be used
+ * as the value for an INTEGER type.
+ *
+ * @param x the integer.
+ *
+ * @return the byte buffer.
+ */
+export function integerToDer (x: number): ByteStringBuffer {
+  const rval = createBuffer();
+
+  if (x >= -0x80 && x < 0x80) {
+    return rval.putSignedInt(x, 8);
+  }
+  if (x >= -0x8000 && x < 0x8000) {
+    return rval.putSignedInt(x, 16);
+  }
+  if (x >= -0x800000 && x < 0x800000) {
+    return rval.putSignedInt(x, 24);
+  }
+  if (x >= -0x80000000 && x < 0x80000000) {
+    return rval.putSignedInt(x, 32);
+  }
+  
+  var error = new Error('Integer too large; max is 32-bits.');
+  // TODO: write a custom Error for this
+  // @ts-expect-error
+  error.integer = x;
+
+  throw error;
+};
+
 // TODO: asn1.derToInteger
-// TODO: asn1.validate
+
+/**
+ * Validates that the given ASN.1 object is at least a super set of the
+ * given ASN.1 structure. Only tag classes and types are checked. An
+ * optional map may also be provided to capture ASN.1 values while the
+ * structure is checked.
+ *
+ * To capture an ASN.1 value, set an object in the validator's 'capture'
+ * parameter to the key to use in the capture map. To capture the full
+ * ASN.1 object, specify 'captureAsn1'. To capture BIT STRING bytes, including
+ * the leading unused bits counter byte, specify 'captureBitStringContents'.
+ * To capture BIT STRING bytes, without the leading unused bits counter byte,
+ * specify 'captureBitStringValue'.
+ *
+ * Objects in the validator may set a field 'optional' to true to indicate
+ * that it isn't necessary to pass validation.
+ *
+ * @param obj the ASN.1 object to validate.
+ * @param v the ASN.1 structure validator.
+ * @param capture an optional map to capture values in.
+ * @param errors an optional array for storing validation errors.
+ *
+ * @return true on success, false on failure.
+ */
+export function validate (obj: Asn1, v: any, capture, errors) {
+  var rval = false;
+
+  // ensure tag class and type are the same if specified
+  if((obj.tagClass === v.tagClass || typeof(v.tagClass) === 'undefined') &&
+    (obj.type === v.type || typeof(v.type) === 'undefined')) {
+    // ensure constructed flag is the same if specified
+    if(obj.constructed === v.constructed ||
+      typeof(v.constructed) === 'undefined') {
+      rval = true;
+
+      // handle sub values
+      if(v.value && isArray(v.value)) {
+        var j = 0;
+        for(var i = 0; rval && i < v.value.length; ++i) {
+          rval = v.value[i].optional || false;
+          if(obj.value[j]) {
+            rval = validate(obj.value[j] as Asn1, v.value[i], capture, errors);
+            if(rval) {
+              ++j;
+            }
+            else if(v.value[i].optional) {
+              rval = true;
+            }
+          }
+          if(!rval && errors) {
+            errors.push(
+              '[' + v.name + '] ' +
+              'Tag class "' + v.tagClass + '", type "' +
+              v.type + '" expected value length "' +
+              v.value.length + '", got "' +
+              obj.value.length + '"');
+          }
+        }
+      }
+
+      if(rval && capture) {
+        if(v.capture) {
+          capture[v.capture] = obj.value;
+        }
+        if(v.captureAsn1) {
+          capture[v.captureAsn1] = obj;
+        }
+        if(v.captureBitStringContents && 'bitStringContents' in obj) {
+          capture[v.captureBitStringContents] = obj.bitStringContents;
+        }
+        if(v.captureBitStringValue && 'bitStringContents' in obj) {
+          var value;
+          if(obj.bitStringContents!.length < 2) {
+            capture[v.captureBitStringValue] = '';
+          } else {
+            // FIXME: support unused bits with data shifting
+            var unused = obj.bitStringContents!.charCodeAt(0);
+            if(unused !== 0) {
+              throw new Error(
+                'captureBitStringValue only supported for zero unused bits');
+            }
+            capture[v.captureBitStringValue] = obj.bitStringContents!.slice(1);
+          }
+        }
+      }
+    } else if(errors) {
+      errors.push(
+        '[' + v.name + '] ' +
+        'Expected constructed "' + v.constructed + '", got "' +
+        obj.constructed + '"');
+    }
+  } else if(errors) {
+    if(obj.tagClass !== v.tagClass) {
+      errors.push(
+        '[' + v.name + '] ' +
+        'Expected tag class "' + v.tagClass + '", got "' +
+        obj.tagClass + '"');
+    }
+    if(obj.type !== v.type) {
+      errors.push(
+        '[' + v.name + '] ' +
+        'Expected type "' + v.type + '", got "' + obj.type + '"');
+    }
+  }
+  return rval;
+};
+
 // TODO: _nonLatinRegex
 // TODO: asn1.prettyPrint
