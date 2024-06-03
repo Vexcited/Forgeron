@@ -1,5 +1,5 @@
 // forge.util.isArray
-export const isArray = (x: any): boolean => Array.isArray(x);
+export const isArray = (x: any): x is Array<any> => Array.isArray(x);
 // forge.util.isArrayBuffer
 export const isArrayBuffer = (x: any): x is ArrayBuffer => typeof ArrayBuffer !== 'undefined' && x instanceof ArrayBuffer;
 // forge.util.isArrayBufferView
@@ -28,7 +28,7 @@ function _checkBitsParam (n: number): void {
  */
 export class ByteStringBuffer {
   private data: string;
-  private read: number;
+  public read: number;
   private _constructedStringLength: number;
   
   /**
