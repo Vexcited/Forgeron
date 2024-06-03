@@ -4,7 +4,24 @@ A rewrite of the `node-forge` library in TypeScript with a focus on ESM compatib
 
 ## Roadmap
 
-## `asn1.js`
+### `rsa.js`
+
+- [x] `forge.pki.privateKeyToAsn1` (alias `forge.pki.privateKeyToRSAPrivateKey`) : a few type in parameters is missing
+- [x] `forge.pki.privateKeyFromAsn1` : `setRsaPrivateKey`, `BigInteger` and typings for `capture` missing
+
+### `pem.js` (DONE)
+
+- [x] `forge.pem.encode`
+- [x] `forge.pem.decode`
+
+### `pki.js` (DONE)
+
+- [x] `forge.pki.pemToDer`
+- [x] `forge.pki.privateKeyFromPem`
+- [x] `forge.pki.privateKeyToPem`
+- [x] `forge.pki.privateKeyInfoToPem`
+
+### `asn1.js`
 
 - [x] `forge.asn1.create`
 - [x] `forge.asn1.copy`
@@ -18,9 +35,9 @@ A rewrite of the `node-forge` library in TypeScript with a focus on ESM compatib
 - [ ] `forge.asn1.generalizedTimeToDate`
 - [ ] `forge.asn1.dateToUtcTime`
 - [ ] `forge.asn1.dateToGeneralizedTime`
-- [ ] `forge.asn1.integerToDer`
+- [x] `forge.asn1.integerToDer`
 - [ ] `forge.asn1.derToInteger`
-- [ ] `forge.asn1.validate`
+- [x] `forge.asn1.validate`
 - [ ] `forge.asn1.prettyPrint`
 
 ### `util.js`
