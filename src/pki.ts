@@ -95,3 +95,8 @@ export function privateKeyInfoToPem (pki: Asn1, maxline?: number): string {
 
   return pemEncode(msg, { maxline });
 };
+
+/** @was forge.pki.setRsaPrivateKey */
+export { setPrivateKey as setRsaPrivateKey } from "./rsa";
+/** @was forge.pki.setRsaPublicKey */
+export { setPublicKey as setRsaPublicKey } from "./rsa";
